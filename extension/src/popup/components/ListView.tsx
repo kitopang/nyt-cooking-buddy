@@ -6,9 +6,10 @@ import { StatusBanner } from './StatusBanner';
 interface Props {
   lists: GroceryList[];
   onBack: () => void;
+  onOrder: (listId: number) => void;
 }
 
-export function ListView({ lists, onBack }: Props) {
+export function ListView({ lists, onBack, onOrder }: Props) {
   const [selectedListId, setSelectedListId] = useState<number | null>(lists[0]?.id ?? null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,14 @@ export function ListView({ lists, onBack }: Props) {
               </div>
             )
           )}
+
+          <button
+            onClick={() => selectedListId && onOrder(selectedListId)}
+            disabled={!selectedListId || recipes.length === 0 || loading}
+            className="w-full py-2 rounded bg-black text-white text-sm font-medium disabled:opacity-40 hover:bg-gray-800 transition-colors"
+          >
+            Order on Amazon Fresh
+          </button>
         </>
       )}
     </div>

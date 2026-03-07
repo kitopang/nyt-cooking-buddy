@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import listsRouter from './routes/lists.js';
 import recipesRouter from './routes/recipes.js';
 import ingredientsRouter from './routes/ingredients.js';
+import orderRouter from './routes/order.js';
 
 const app = express();
 const PORT = 3001;
@@ -23,6 +25,7 @@ app.use(express.json());
 app.use('/api/lists', listsRouter);
 app.use('/api/lists/:listId/recipes', recipesRouter);
 app.use('/api/lists/:listId/ingredients', ingredientsRouter);
+app.use('/api/lists/:listId', orderRouter);
 app.use('/api/recipes', recipesRouter);
 app.use('/api/ingredients', ingredientsRouter);
 
@@ -32,4 +35,7 @@ app.get('/health', (_req, res) => {
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`nyt-food server running at http://localhost:${PORT}`);
+  if (!process.env['ANTHROPIC_API_KEY'] || process.env['ANTHROPIC_API_KEY'] === 'your_key_here') {
+    console.warn('⚠️  ANTHROPIC_API_KEY not set — Order on Amazon Fresh will fail. Add it to server/.env');
+  }
 });

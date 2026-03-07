@@ -46,3 +46,9 @@ export interface Recipe {
   createdAt: string;
   ingredients: Ingredient[];
 }
+
+export interface ShoppingItem {
+  name: string;
+  quantity: string;
+  searchTerm: string;
+}

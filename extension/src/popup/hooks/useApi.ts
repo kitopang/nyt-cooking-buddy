@@ -1,4 +1,4 @@
-import type { GroceryList, Recipe, ScrapedIngredient } from '../../shared/types';
+import type { GroceryList, Recipe, ScrapedIngredient, ShoppingItem } from '../../shared/types';
 
 const API_BASE = 'http://localhost:3001';
 
@@ -43,4 +43,7 @@ export const api = {
 
   getList: (listId: number) =>
     apiFetch<{ id: number; name: string; recipes: Recipe[] }>(`/api/lists/${listId}`),
+
+  getShoppingList: (listId: number) =>
+    apiFetch<{ items: ShoppingItem[] }>(`/api/lists/${listId}/shopping-list`, { method: 'POST' }),
 };

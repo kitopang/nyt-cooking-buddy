@@ -6,14 +6,16 @@ import { RecipeView } from './components/RecipeView';
 import { ListSelector } from './components/ListSelector';
 import { StatusBanner } from './components/StatusBanner';
 import { ListView } from './components/ListView';
+import { OrderView } from './components/OrderView';
 
 type Phase = 'loading' | 'not-recipe' | 'ready' | 'saving' | 'saved' | 'error';
-type View = 'add' | 'browse';
+type View = 'add' | 'browse' | 'order';
 
 export function App() {
   const scrapeState = useRecipeScrape();
 
   const [view, setView] = useState<View>('add');
+  const [orderListId, setOrderListId] = useState<number | null>(null);
   const [lists, setLists] = useState<GroceryList[]>([]);
   const [selectedListId, setSelectedListId] = useState<number | 'new' | null>(null);
   const [recipe, setRecipe] = useState<ScrapedRecipe | null>(null);
@@ -94,8 +96,18 @@ export function App() {
     }
   }
 
+  if (view === 'order' && orderListId !== null) {
+    return <OrderView listId={orderListId} onBack={() => setView('browse')} />;
+  }
+
   if (view === 'browse') {
-    return <ListView lists={lists} onBack={() => setView('add')} />;
+    return (
+      <ListView
+        lists={lists}
+        onBack={() => setView('add')}
+        onOrder={(id) => { setOrderListId(id); setView('order'); }}
+      />
+    );
   }
 
   if (phase === 'loading' || scrapeState.status === 'loading') {
