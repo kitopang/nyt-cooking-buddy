@@ -1,4 +1,4 @@
-import type { GroceryList, Recipe, ScrapedIngredient, ShoppingItem } from '../../shared/types';
+// API helpers — kept for potential future use.
 
 const API_BASE = 'http://localhost:3001';
 
@@ -22,31 +22,4 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const api = {
-  getLists: () =>
-    apiFetch<{ lists: GroceryList[] }>('/api/lists').then((r) => r.lists),
-
-  createList: (name: string) =>
-    apiFetch<GroceryList>('/api/lists', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    }),
-
-  saveRecipe: (listId: number, recipe: { name: string; url: string; ingredients: ScrapedIngredient[] }) =>
-    apiFetch<Recipe>(`/api/lists/${listId}/recipes`, {
-      method: 'POST',
-      body: JSON.stringify(recipe),
-    }),
-
-  deleteRecipe: (recipeId: number) =>
-    apiFetch<void>(`/api/recipes/${recipeId}`, { method: 'DELETE' }),
-
-  getList: (listId: number) =>
-    apiFetch<{ id: number; name: string; recipes: Recipe[] }>(`/api/lists/${listId}`),
-
-  getShoppingList: (listId: number, force = false) =>
-    apiFetch<{ items: ShoppingItem[]; cached: boolean }>(`/api/lists/${listId}/shopping-list`, {
-      method: 'POST',
-      body: JSON.stringify({ force }),
-    }),
-};
+export { apiFetch };

@@ -5,6 +5,7 @@ import listsRouter from './routes/lists.js';
 import recipesRouter from './routes/recipes.js';
 import ingredientsRouter from './routes/ingredients.js';
 import orderRouter from './routes/order.js';
+import aggregateRouter from './routes/aggregate.js';
 
 const app = express();
 const PORT = 3001;
@@ -22,6 +23,7 @@ app.use(cors({
 
 app.use(express.json());
 
+app.use('/api/shopping-list', aggregateRouter);
 app.use('/api/lists', listsRouter);
 app.use('/api/lists/:listId/recipes', recipesRouter);
 app.use('/api/lists/:listId/ingredients', ingredientsRouter);

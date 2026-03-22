@@ -1,4 +1,4 @@
-const NYT_RECIPE_RE = /^https:\/\/cooking\.nytimes\.com\/recipes\//;
+const NYT_RECIPE_RE = /^https:\/\/cooking\.nytimes\.com\/recipe-box\//;
 
 // Auto-open the popup when the user lands on an NYT Cooking recipe page.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

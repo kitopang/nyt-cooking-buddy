@@ -19,6 +19,18 @@ export type ScrapeResponse =
   | { success: true; data: ScrapedRecipe }
   | { success: false; error: string };
 
+// Recipe box types
+
+export interface RecipeBoxRecipe {
+  title: string;
+  url: string;
+  ingredients: string[]; // raw strings from JSON-LD
+}
+
+export type RecipeBoxScrapeResponse =
+  | { success: true; boxTitle: string; data: RecipeBoxRecipe[] }
+  | { success: false; error: string };
+
 // API types (mirroring server responses)
 
 export interface GroceryList {

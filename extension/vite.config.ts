@@ -13,11 +13,13 @@ export default defineConfig({
         popup: resolve(__dirname, 'popup/index.html'),
         background: resolve(__dirname, 'src/background/service-worker.ts'),
         content: resolve(__dirname, 'src/content/scraper.ts'),
+        'recipe-box-scraper': resolve(__dirname, 'src/content/recipe-box-scraper.ts'),
       },
       output: {
         entryFileNames: (chunk) => {
           if (chunk.name === 'background') return 'background.js';
           if (chunk.name === 'content') return 'content/scraper.js';
+          if (chunk.name === 'recipe-box-scraper') return 'content/recipe-box-scraper.js';
           return 'popup/[name].js';
         },
         chunkFileNames: 'chunks/[name]-[hash].js',
