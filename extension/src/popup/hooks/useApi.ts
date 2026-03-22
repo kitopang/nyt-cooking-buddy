@@ -44,6 +44,9 @@ export const api = {
   getList: (listId: number) =>
     apiFetch<{ id: number; name: string; recipes: Recipe[] }>(`/api/lists/${listId}`),
 
-  getShoppingList: (listId: number) =>
-    apiFetch<{ items: ShoppingItem[] }>(`/api/lists/${listId}/shopping-list`, { method: 'POST' }),
+  getShoppingList: (listId: number, force = false) =>
+    apiFetch<{ items: ShoppingItem[]; cached: boolean }>(`/api/lists/${listId}/shopping-list`, {
+      method: 'POST',
+      body: JSON.stringify({ force }),
+    }),
 };

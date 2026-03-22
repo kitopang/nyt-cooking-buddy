@@ -5,8 +5,8 @@ import { chromium, type BrowserContext, type Page } from 'playwright';
 const AMAZON_FRESH_URL =
   'https://www.amazon.com/alm/storefront?almBrandId=QW1hem9uIEZyZXNo';
 
-// Persistent profile dir — cookies survive between runs so login is only needed once.
-const USER_DATA_DIR = path.join(os.homedir(), '.nyt-food-playwright');
+const CHROME_PROFILE_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+const CUSTOM_PROFILE_DIR = path.join(os.homedir(), '.nyt-food-playwright');
 
 // Selector fallback arrays — Amazon A/B tests heavily; update if broken.
 const SEARCH_BOX_SELECTORS = [
@@ -50,11 +50,25 @@ export class AmazonFresh {
   private page: Page | null = null;
 
   async open(): Promise<void> {
-    this.context = await chromium.launchPersistentContext(USER_DATA_DIR, {
-      headless: false,
-      args: ['--start-maximized'],
-      viewport: null,
-    });
+    // Prefer the real Chrome profile (all cookies already there).
+    // Falls back to a custom profile if Chrome is already running and holds the profile lock.
+    try {
+      this.context = await chromium.launchPersistentContext(CHROME_PROFILE_DIR, {
+        headless: false,
+        channel: 'chrome',
+        args: ['--start-maximized'],
+        viewport: null,
+      });
+      console.log('[amazon-fresh] Using real Chrome profile.');
+    } catch {
+      console.log('[amazon-fresh] Chrome is running — falling back to standalone profile. Sign in when prompted (saved for future runs).');
+      this.context = await chromium.launchPersistentContext(CUSTOM_PROFILE_DIR, {
+        headless: false,
+        channel: 'chrome',
+        args: ['--start-maximized'],
+        viewport: null,
+      });
+    }
     this.page = await this.context.newPage();
     await this.page.goto(AMAZON_FRESH_URL, { waitUntil: 'domcontentloaded' });
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { invalidateShoppingList } from '../cache.js';
 
 interface IngredientInput {
   rawText: string;
@@ -68,6 +69,7 @@ router.post('/', (req, res) => {
 
     db.exec('COMMIT');
 
+    invalidateShoppingList(Number(listId));
     res.status(201).json({
       ...recipe,
       ingredients: savedIngredients.map((ing) => ({ ...ing, checked: ing.checked === 1 })),
@@ -80,6 +82,10 @@ router.post('/', (req, res) => {
 
 // DELETE /api/recipes/:recipeId
 router.delete('/:recipeId', (req, res) => {
+  const recipe = db.prepare(`SELECT list_id FROM recipes WHERE id = ?`).get(req.params.recipeId) as
+    | { list_id: number }
+    | undefined;
+
   const result = db.prepare(`DELETE FROM recipes WHERE id = ?`).run(req.params.recipeId);
 
   if (result.changes === 0) {
@@ -87,6 +93,7 @@ router.delete('/:recipeId', (req, res) => {
     return;
   }
 
+  if (recipe) invalidateShoppingList(recipe.list_id);
   res.status(204).send();
 });
 

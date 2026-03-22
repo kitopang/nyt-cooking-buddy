@@ -28,20 +28,26 @@ export function OrderView({ listId, onBack }: Props) {
   const [phase, setPhase] = useState<Phase>('generating');
   const [error, setError] = useState('');
   const [items, setItems] = useState<(ShoppingItem & { checked: boolean })[]>([]);
+  const [fromCache, setFromCache] = useState(false);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [summary, setSummary] = useState<DoneEvent | null>(null);
 
-  useEffect(() => {
-    api.getShoppingList(listId)
+  function loadShoppingList(force = false) {
+    setPhase('generating');
+    setError('');
+    api.getShoppingList(listId, force)
       .then((data) => {
-        setItems(data.items.map((item) => ({ ...item, checked: true })));
+        setItems(data.items.map((item) => ({ ...item, checked: !item.hasAtHome })));
+        setFromCache(data.cached);
         setPhase('review');
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : String(err));
         setPhase('review');
       });
-  }, [listId]);
+  }
+
+  useEffect(() => { loadShoppingList(); }, [listId]);
 
   async function handleAddToCart() {
     const selected = items.filter((i) => i.checked);
@@ -128,7 +134,15 @@ export function OrderView({ listId, onBack }: Props) {
 
       {phase === 'review' && !error && (
         <>
-          <p className="text-xs text-gray-500">{selectedCount} of {items.length} items selected</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">{selectedCount} of {items.length} items selected</p>
+            <button
+              onClick={() => loadShoppingList(true)}
+              className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              {fromCache ? 'Regenerate ↺' : '↺ Regenerate'}
+            </button>
+          </div>
           <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
             {items.map((item, i) => (
               <label key={i} className="flex items-start gap-2 text-sm cursor-pointer">

@@ -51,4 +51,5 @@ export interface ShoppingItem {
   name: string;
   quantity: string;
   searchTerm: string;
+  hasAtHome: boolean;
 }

@@ -62,16 +62,29 @@ export function ListView({ lists, onBack, onOrder }: Props) {
             ) : (
               <div className="flex flex-col gap-2">
                 {recipes.map((r) => (
-                  <div key={r.id} className="border border-gray-200 rounded p-2">
+                  <div key={r.id} className="border border-gray-200 rounded p-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <button
+                        onClick={() => chrome.tabs.create({ url: r.url, active: false })}
+                        className="text-sm font-medium text-black hover:underline text-left"
+                      >
+                        {r.name}
+                      </button>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {r.ingredients.length} ingredient{r.ingredients.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
                     <button
-                      onClick={() => chrome.tabs.create({ url: r.url, active: false })}
-                      className="text-sm font-medium text-black hover:underline text-left"
+                      onClick={() => {
+                        api.deleteRecipe(r.id)
+                          .then(() => setRecipes((prev) => prev.filter((x) => x.id !== r.id)))
+                          .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+                      }}
+                      className="text-gray-300 hover:text-red-500 transition-colors shrink-0 text-xs mt-0.5"
+                      aria-label="Remove recipe"
                     >
-                      {r.name}
+                      ✕
                     </button>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {r.ingredients.length} ingredient{r.ingredients.length !== 1 ? 's' : ''}
-                    </p>
                   </div>
                 ))}
               </div>

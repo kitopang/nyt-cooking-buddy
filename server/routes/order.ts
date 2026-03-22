@@ -2,20 +2,24 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import db from '../db.js';
 import { AmazonFresh } from '../amazon-fresh.js';
+import { getCachedShoppingList, setCachedShoppingList } from '../cache.js';
 
 const router = Router({ mergeParams: true });
 const anthropic = new Anthropic();
 
-interface ShoppingItem {
+export interface ShoppingItem {
   name: string;
   quantity: string;
   searchTerm: string;
+  hasAtHome: boolean;
 }
 
 // POST /api/lists/:listId/shopping-list
-// Calls Claude to aggregate all ingredients for the list into a clean shopping list
+// Calls Claude to aggregate all ingredients for the list into a clean shopping list.
+// Pass { force: true } in the body to bypass the cache.
 router.post('/shopping-list', async (req, res) => {
   const { listId } = req.params as { listId: string };
+  const force = (req.body as { force?: boolean }).force === true;
 
   const list = db.prepare(`SELECT id, name FROM grocery_lists WHERE id = ?`).get(listId) as
     | { id: number; name: string }
@@ -24,6 +28,14 @@ router.post('/shopping-list', async (req, res) => {
   if (!list) {
     res.status(404).json({ error: 'List not found' });
     return;
+  }
+
+  if (!force) {
+    const cached = getCachedShoppingList(list.id);
+    if (cached) {
+      res.json({ items: cached, cached: true });
+      return;
+    }
   }
 
   const rows = db.prepare(`
@@ -50,7 +62,7 @@ router.post('/shopping-list', async (req, res) => {
       messages: [
         {
           role: 'user',
-          content: `Here are all the ingredients from my grocery list "${list.name}":\n\n${ingredientLines}\n\nReturn JSON in this exact shape: { "items": [{ "name": string, "quantity": string, "searchTerm": string }] }\n\n"searchTerm" should be a clean Amazon search string (no quantities, just the ingredient name, e.g. "all purpose flour").`,
+          content: `Here are all the ingredients from my grocery list "${list.name}":\n\n${ingredientLines}\n\nReturn JSON in this exact shape: { "items": [{ "name": string, "quantity": string, "searchTerm": string, "hasAtHome": boolean }] }\n\n"searchTerm" should be a clean Amazon search string (no quantities, just the ingredient name, e.g. "all purpose flour").\n"hasAtHome" should be true for common pantry staples most people already own (e.g. salt, pepper, olive oil, butter, flour, sugar, garlic, onion, vegetable oil, baking soda, baking powder, soy sauce, vinegar, water). Set it to false for everything else.`,
         },
       ],
     });
@@ -67,7 +79,8 @@ router.post('/shopping-list', async (req, res) => {
       return;
     }
 
-    res.json({ items: parsed.items });
+    setCachedShoppingList(list.id, parsed.items);
+    res.json({ items: parsed.items, cached: false });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(502).json({ error: `Claude API error: ${msg}` });
