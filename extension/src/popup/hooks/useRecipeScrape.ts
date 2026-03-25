@@ -4,6 +4,7 @@ import type { ScrapeResponse, ScrapedRecipe } from '../../shared/types';
 type ScrapeState =
   | { status: 'loading' }
   | { status: 'not-recipe' }
+  | { status: 'recipe-box' }
   | { status: 'ready'; recipe: ScrapedRecipe }
   | { status: 'error'; error: string };
 
@@ -17,6 +18,12 @@ export function useRecipeScrape(): ScrapeState {
       // Get the active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (cancelled) return;
+
+      // Recipe box page — show the order UI
+      if (tab?.url?.match(/^https:\/\/cooking\.nytimes\.com\/recipe-box\//)) {
+        setState({ status: 'recipe-box' });
+        return;
+      }
 
       // Check if we're on a recipe page
       if (!tab?.url?.match(/^https:\/\/cooking\.nytimes\.com\/recipes\//)) {

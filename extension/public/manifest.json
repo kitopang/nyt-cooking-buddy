@@ -30,6 +30,11 @@
       "matches": ["https://cooking.nytimes.com/recipes/*"],
       "js": ["content/scraper.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://cooking.nytimes.com/recipe-box/*"],
+      "js": ["content/recipe-box-scraper.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
