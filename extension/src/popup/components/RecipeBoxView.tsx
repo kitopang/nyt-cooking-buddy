@@ -7,6 +7,7 @@ import type {
 import { StatusBanner } from "./StatusBanner";
 
 const API_BASE = "http://localhost:3001";
+const STORAGE_KEY = "recipeBoxState";
 
 type Phase =
   | "loading" // scraping recipe-box page
@@ -33,6 +34,25 @@ interface DoneEvent {
   failures: { item: string; note?: string }[];
 }
 
+interface PersistedState {
+  phase: Phase;
+  boxTitle: string;
+  shoppingItems: (ShoppingItem & { checked: boolean })[];
+  progress: ProgressItem[];
+  summary: DoneEvent | null;
+  error: string;
+}
+
+const PERSISTED_PHASES: Phase[] = ["review", "ordering", "done"];
+
+function saveState(state: PersistedState) {
+  chrome.storage.local.set({ [STORAGE_KEY]: state });
+}
+
+function clearSaved() {
+  chrome.storage.local.remove(STORAGE_KEY);
+}
+
 export function RecipeBoxView() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState("");
@@ -44,34 +64,62 @@ export function RecipeBoxView() {
   const [fromCache, setFromCache] = useState(false);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [summary, setSummary] = useState<DoneEvent | null>(null);
+  const [restored, setRestored] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  // Step 1: scrape the recipe-box page via content script
+  // Persist state whenever it changes during review/ordering/done phases
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (!tab?.id) {
-        setError("Could not access the current tab.");
-        setPhase("error");
+    if (!restored) return;
+    if (PERSISTED_PHASES.includes(phase)) {
+      saveState({ phase, boxTitle, shoppingItems, progress, summary, error });
+    }
+  }, [restored, phase, boxTitle, shoppingItems, progress, summary, error]);
+
+  // On mount: try to restore persisted state, otherwise scrape
+  useEffect(() => {
+    chrome.storage.local.get(STORAGE_KEY, (result) => {
+      const saved = result[STORAGE_KEY] as PersistedState | undefined;
+      if (saved && PERSISTED_PHASES.includes(saved.phase)) {
+        // If ordering was in progress but popup closed, show as done (SSE stream is lost)
+        const resumePhase = saved.phase === "ordering" ? "done" : saved.phase;
+        setPhase(resumePhase);
+        setBoxTitle(saved.boxTitle);
+        setShoppingItems(saved.shoppingItems);
+        setProgress(saved.progress);
+        setSummary(saved.summary);
+        setError(saved.error);
+        setRestored(true);
         return;
       }
-      sendScrapeMessage(tab.id)
-        .then((response) => {
-          if (!response.success) {
-            setError(response.error);
-            setPhase("error");
-            return;
-          }
-          setBoxTitle(response.boxTitle);
-          setRecipes(response.data.map((r) => ({ ...r, selected: true })));
-          setPhase("select");
-        })
-        .catch((err: unknown) => {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Could not connect to the page. Try reloading."
-          );
+
+      setRestored(true);
+      // No saved state — scrape the page
+      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+        if (!tab?.id) {
+          setError("Could not access the current tab.");
           setPhase("error");
-        });
+          return;
+        }
+        sendScrapeMessage(tab.id)
+          .then((response) => {
+            if (!response.success) {
+              setError(response.error);
+              setPhase("error");
+              return;
+            }
+            setBoxTitle(response.boxTitle);
+            setRecipes(response.data.map((r) => ({ ...r, selected: true })));
+            setPhase("select");
+          })
+          .catch((err: unknown) => {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Could not connect to the page. Try reloading."
+            );
+            setPhase("error");
+          });
+      });
     });
   }, []);
 
@@ -306,32 +354,99 @@ export function RecipeBoxView() {
           </button>
         </div>
         <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {shoppingItems.map((item, i) => (
-            <label
-              key={i}
-              className="flex items-start gap-2 text-sm cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={item.checked}
-                onChange={() =>
-                  setShoppingItems((prev) =>
-                    prev.map((it, idx) =>
-                      idx === i ? { ...it, checked: !it.checked } : it
+          {shoppingItems.map((item, i) =>
+            editingIndex === i ? (
+              <div
+                key={i}
+                className="flex flex-col gap-1 p-2 rounded bg-gray-50 border border-gray-200 text-sm"
+              >
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-500 w-10 shrink-0">Item</span>
+                  <input
+                    type="text"
+                    value={item.name}
+                    onChange={(e) =>
+                      setShoppingItems((prev) =>
+                        prev.map((it, idx) =>
+                          idx === i
+                            ? { ...it, name: e.target.value, searchTerm: e.target.value }
+                            : it
+                        )
+                      )
+                    }
+                    className="flex-1 px-1.5 py-0.5 rounded border border-gray-300 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-500 w-10 shrink-0">Qty</span>
+                  <input
+                    type="text"
+                    value={item.quantity}
+                    onChange={(e) =>
+                      setShoppingItems((prev) =>
+                        prev.map((it, idx) =>
+                          idx === i ? { ...it, quantity: e.target.value } : it
+                        )
+                      )
+                    }
+                    className="flex-1 px-1.5 py-0.5 rounded border border-gray-300 text-sm"
+                  />
+                </div>
+                <button
+                  onClick={() => setEditingIndex(null)}
+                  className="self-end text-xs text-gray-500 hover:text-gray-800 mt-0.5"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <label
+                key={i}
+                className="flex items-start gap-2 text-sm cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={item.checked}
+                  onChange={() =>
+                    setShoppingItems((prev) =>
+                      prev.map((it, idx) =>
+                        idx === i ? { ...it, checked: !it.checked } : it
+                      )
                     )
-                  )
-                }
-                className="mt-0.5 shrink-0"
-              />
-              <span className="flex-1">
-                <span className="font-medium">{item.name}</span>
-                {item.quantity && (
-                  <span className="text-gray-400"> — {item.quantity}</span>
-                )}
-              </span>
-            </label>
-          ))}
+                  }
+                  className="mt-0.5 shrink-0"
+                />
+                <span className="flex-1">
+                  <span className="font-medium">{item.name}</span>
+                  {item.quantity && (
+                    <span className="text-gray-400"> — {item.quantity}</span>
+                  )}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setEditingIndex(i);
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-700 shrink-0"
+                >
+                  Edit
+                </button>
+              </label>
+            )
+          )}
         </div>
+        <button
+          onClick={() => {
+            setShoppingItems((prev) => [
+              ...prev,
+              { name: "", quantity: "", searchTerm: "", hasAtHome: false, checked: true },
+            ]);
+            setEditingIndex(shoppingItems.length);
+          }}
+          className="text-xs text-gray-500 hover:text-gray-800 transition-colors self-start"
+        >
+          + Add item
+        </button>
         <p className="text-xs text-gray-400 italic">
           Amazon Fresh will open in your browser. The popup may close — the
           automation will continue.
@@ -398,6 +513,45 @@ export function RecipeBoxView() {
 
       {phase === "done" && error && (
         <StatusBanner type="error" message={error} />
+      )}
+
+      {phase === "done" && (
+        <button
+          onClick={() => {
+            clearSaved();
+            setPhase("loading");
+            setShoppingItems([]);
+            setProgress([]);
+            setSummary(null);
+            setError("");
+            // Re-scrape
+            chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+              if (!tab?.id) {
+                setError("Could not access the current tab.");
+                setPhase("error");
+                return;
+              }
+              sendScrapeMessage(tab.id)
+                .then((response) => {
+                  if (!response.success) {
+                    setError(response.error);
+                    setPhase("error");
+                    return;
+                  }
+                  setBoxTitle(response.boxTitle);
+                  setRecipes(response.data.map((r) => ({ ...r, selected: true })));
+                  setPhase("select");
+                })
+                .catch(() => {
+                  setError("Could not connect to the page. Try reloading.");
+                  setPhase("error");
+                });
+            });
+          }}
+          className="w-full py-2 rounded bg-black text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+        >
+          Start Over
+        </button>
       )}
     </div>
   );

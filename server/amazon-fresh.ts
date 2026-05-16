@@ -160,7 +160,7 @@ export class AmazonFresh {
 Here are the search results:
 ${resultItems.map((r) => r.label).join('\n')}
 
-Always pick item #1 UNLESS it is clearly the wrong product (wrong ingredient, wrong category, bulk/commercial size). Only then pick the next best match further down the list.
+Pick the most popular item (highest "bought in past month"), as long as it's a correct match for the ingredient I need and it isn't disproportionately more expensive than other options (i.e. 2x more expensive).
 If NONE of the items are a reasonable match, return index 0.
 
 Return ONLY a JSON object: { "index": <number from the list, or 0 if no match>, "confidence": "high" | "medium" | "low" | "none", "reason": "<brief>" }`,
@@ -196,6 +196,9 @@ Return ONLY a JSON object: { "index": <number from the list, or 0 if no match>, 
       await cartBtn.scrollIntoViewIfNeeded();
       await cartBtn.click();
       await page.waitForTimeout(800);
+
+      // Scroll back to top so the search bar is visible for the next item
+      await page.evaluate(() => window.scrollTo(0, 0));
 
       return { item: name, success: true, note: pickReason };
     } catch (err) {
