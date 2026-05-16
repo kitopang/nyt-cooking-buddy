@@ -56,7 +56,7 @@ router.post('/shopping-list', async (req, res) => {
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2048,
+      max_tokens: 4096,
       system:
         'You are a grocery shopping assistant. Given raw ingredient strings from multiple recipes, produce a clean aggregated shopping list optimized for Amazon Fresh. Combine duplicates and sum quantities where units match. Return ONLY valid JSON with no markdown fences.',
       messages: [

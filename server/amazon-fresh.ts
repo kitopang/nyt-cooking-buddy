@@ -1,6 +1,9 @@
 import path from 'path';
 import os from 'os';
 import { chromium, type BrowserContext, type Page } from 'playwright';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic();
 
 const AMAZON_FRESH_URL =
   'https://www.amazon.com/alm/storefront?almBrandId=QW1hem9uIEZyZXNo';
@@ -116,11 +119,85 @@ export class AmazonFresh {
       const cartSel = await findFirst(page, ADD_TO_CART_SELECTORS);
       if (!cartSel) return { item: name, success: false, note: 'No add-to-cart button found' };
 
-      await page.locator(cartSel).first().scrollIntoViewIfNeeded();
-      await page.locator(cartSel).first().click();
+      // Strip the `.s-result-item ` prefix so we can use the selector scoped inside a result item
+      const innerCartSel = cartSel.replace(/^\.s-result-item\s+/, '');
+
+      // Extract product info from each result that has an Add to Cart button.
+      // We build a list aligned to cart buttons so Claude's index maps directly.
+      const resultItems = await page.locator('.s-result-item[data-asin]').evaluateAll((els, sel) => {
+        const items: { domIndex: number; label: string }[] = [];
+        els.forEach((el, i) => {
+          if (!el.querySelector(sel)) return; // skip items without Add to Cart
+          const title = el.querySelector('h2')?.textContent?.trim() ?? '';
+          if (!title) return;
+          const price = el.querySelector('.a-price .a-offscreen')?.textContent?.trim() ?? '';
+          const size = el.querySelector('.a-size-base.a-color-secondary, .a-row .a-size-base')?.textContent?.trim() ?? '';
+          items.push({
+            domIndex: i,
+            label: `${items.length + 1}. ${title}${size ? ` — ${size}` : ''}${price ? ` (${price})` : ''}`,
+          });
+        });
+        return items;
+      }, innerCartSel);
+
+      if (resultItems.length === 0) {
+        return { item: name, success: false, note: 'No products with Add to Cart found' };
+      }
+
+      // Ask Claude to pick the best match from the product list
+      let pickIdx = 0; // index into resultItems array
+      let pickReason = 'Fell back to first result';
+
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 256,
+          messages: [
+            {
+              role: 'user',
+              content: `I'm shopping on Amazon Fresh for: "${name}" (searched: "${searchTerm}").
+
+Here are the search results:
+${resultItems.map((r) => r.label).join('\n')}
+
+Always pick item #1 UNLESS it is clearly the wrong product (wrong ingredient, wrong category, bulk/commercial size). Only then pick the next best match further down the list.
+If NONE of the items are a reasonable match, return index 0.
+
+Return ONLY a JSON object: { "index": <number from the list, or 0 if no match>, "confidence": "high" | "medium" | "low" | "none", "reason": "<brief>" }`,
+            },
+          ],
+        });
+
+        const raw = response.content[0]?.type === 'text' ? response.content[0].text : '';
+        const cleaned = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim();
+        const pick = JSON.parse(cleaned) as { index: number; confidence: string; reason: string };
+
+        console.log(`[amazon-fresh] Claude pick for "${name}":`, pick);
+
+        if (pick.confidence === 'none' || pick.index === 0) {
+          return { item: name, success: false, note: `No good match: ${pick.reason}` };
+        }
+        if (pick.confidence === 'low') {
+          return { item: name, success: false, note: `Low confidence, skipped: ${pick.reason}` };
+        }
+        if (pick.index >= 1 && pick.index <= resultItems.length) {
+          pickIdx = pick.index - 1;
+          pickReason = pick.reason;
+        } else {
+          console.warn(`[amazon-fresh] Claude returned index ${pick.index} but only ${resultItems.length} items — using first`);
+        }
+      } catch (err) {
+        console.warn('[amazon-fresh] Claude pick failed, falling back to first result:', err instanceof Error ? err.message : err);
+      }
+
+      // Click the Add to Cart button inside the correct DOM result item
+      const targetAsin = page.locator('.s-result-item[data-asin]').nth(resultItems[pickIdx].domIndex);
+      const cartBtn = targetAsin.locator(innerCartSel).first();
+      await cartBtn.scrollIntoViewIfNeeded();
+      await cartBtn.click();
       await page.waitForTimeout(800);
 
-      return { item: name, success: true };
+      return { item: name, success: true, note: pickReason };
     } catch (err) {
       return { item: name, success: false, note: err instanceof Error ? err.message : String(err) };
     }
