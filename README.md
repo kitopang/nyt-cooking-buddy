@@ -1,7 +1,7 @@
 ## NYT Cooking Buddy
 This project aims to automate the parts of home cooking that have the most friction — deciding recipes & grocery shopping — allowing you to focus on enjoying cooking.
 
-This is the high level workflow done through a Chrome extension + local server:
+This is done through a Chrome extension + local server. Features:
 1. Build a recipe list in NYT Cooking
 2. Aggregate ingredients needed among all recipes using Claude
 3. De-select and alter shopping list
