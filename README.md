@@ -32,7 +32,7 @@ I enjoy the act of cooking, but don't appreciate the time & energy it takes to p
 3. Wait in a massive line and then carry ingredients back on the crowded 6 train
 5. End up with a ton of leftover ingredients
 
-I started dreading this process and started leaning into eating out more, which wasn't ideal for staying healthy and not going broke. 
+I started dreading this process and started eating out more, which wasn't ideal for staying healthy and not going broke. 
 
 I first tried going to grocery stores closer to home to ease the pain of going to a crowded Trader Joe's, but local prices and quality just wasn't great. I found myself paying at least 40% more on regular items that tasted worse than TJs. 
 
