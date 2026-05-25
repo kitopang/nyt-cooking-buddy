@@ -8,6 +8,12 @@ This is the high level workflow done through a Chrome extension + local server:
 4. Order autonomously on Amazon Fresh using a Claude + Playwright agent
 
 ## Usage: 
+Add an Anthropic API key in `.env` in the `server` directory that has the following:
+
+```
+ANTHROPIC_API_KEY=<YOUR_KEY_HERE>
+```
+
 Load extension into chrome:
 - Open Chrome and go to chrome://extensions
 - Toggle Developer mode on (top-right corner)
@@ -15,6 +21,8 @@ Load extension into chrome:
 - Select the `extension` folder
 
 Run `npm run dev` in `server` to start the backend that processes the extension's request and auto-order automation
+
+Create a recipe box in NYT Cooking and open the extension once ready.
 
 # Why I built this
 I enjoy the act of cooking, but don't appreciate the time & energy it takes to prepare for it. My typical Monday used to look like the following: 
