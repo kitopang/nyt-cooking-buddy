@@ -7,6 +7,15 @@ This is the high level workflow done through a Chrome extension + local server:
 3. De-select and alter shopping list
 4. Order autonomously on Amazon Fresh using a Claude + Playwright agent
 
+## Usage: 
+Load extension into chrome:
+- Open Chrome and go to chrome://extensions
+- Toggle Developer mode on (top-right corner)
+- Click Load unpacked
+- Select the `extension` folder
+
+Run `npm run dev` in `server` to start the backend that processes the extension's request and auto-order automation
+
 # Why I built this
 I enjoy the act of cooking, but don't appreciate the time & energy it takes to prepare for it. My typical Monday used to look like the following: 
 
