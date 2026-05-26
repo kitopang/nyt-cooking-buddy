@@ -1,4 +1,6 @@
 ## NYT Cooking Buddy
+https://youtu.be/16GLPGv3kF8
+
 This project aims to automate the parts of home cooking that have the most friction — deciding recipes & grocery shopping — allowing you to focus on enjoying cooking.
 
 This is done through a Chrome extension + local server. Features:
